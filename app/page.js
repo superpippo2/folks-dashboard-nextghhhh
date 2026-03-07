@@ -308,14 +308,18 @@ export default function App() {
   const NOW = useMemo(()=>Date.now(),[]);
 
   const [selectedName, setSelectedName] = useState("ALGO");
-  const [liveData, setLiveData] = useState(null);
+ const [liveData, setLiveData] = useState(null);
+  const [livePrices, setLivePrices] = useState(null);
+  const [loanType, setLoanType] = useState("general");
 
   useEffect(() => {
     fetch("/api/pools")
       .then(r => r.json())
-      .then(json => {
-        if (json.success) setLiveData(json.data);
-      })
+      .then(json => { if (json.success) setLiveData(json.data); })
+      .catch(console.error);
+    fetch("/api/prices")
+      .then(r => r.json())
+      .then(json => { if (json.success) setLivePrices(json.prices); })
       .catch(console.error);
   }, []);
   const [amountUnit, setAmountUnit]     = useState("usd");
@@ -355,8 +359,10 @@ export default function App() {
     };
     const live = liveData.find(d => d.key === keyMap[selectedName]);
     if (!live) return base;
-    return { ...base, ...live };
-  }, [selectedName, liveData]);
+    const caps = live.caps?.[loanType] || {};
+    const livePrice = livePrices?.[selectedName] ?? base.price;
+    return { ...base, price: livePrice, depositAPY: live.depositAPY, varBorrowAPY: live.varBorrowAPY, stblBorrowAPY: live.stblBorrowAPY, totalDeposits: live.totalDeposits, totalBorrow: live.totalBorrow, collateralCap: caps.collateralCap || 0, collateralUsed: caps.collateralUsed || 0 };
+  }, [selectedName, liveData, loanType, livePrices]);
   const isIsolated = ISOLATED_POOLS.some(p=>p.name===selectedName);
 
   const apyHistory = useMemo(()=>genHistory(pool,apyFrom,apyTo),[selectedName,apyFrom,apyTo]);
@@ -365,8 +371,8 @@ export default function App() {
   const apyTick = Math.max(0, Math.floor(apyHistory.length/6)-1);
   const amtTick = Math.max(0, Math.floor(amtHistory.length/6)-1);
 
-  const collatPct = ((pool.totalDeposits/pool.collateralCap)*100).toFixed(1);
-  const borrowPct  = ((pool.totalBorrow/pool.borrowCap)*100).toFixed(1);
+  const collatPct = (pool.collateralCap > 0 && pool.collateralUsed != null) ? ((pool.collateralUsed/pool.collateralCap)*100).toFixed(1) : "—";
+  const borrowPct  = (pool.borrowCap > 0 && pool.totalBorrow != null) ? ((pool.totalBorrow/pool.borrowCap)*100).toFixed(1) : "—";
 
   return (
     <div style={{background:"#060A14",color:"#E2E8F0",minHeight:"100vh",fontFamily:"'DM Sans',sans-serif",fontSize:14}}>
@@ -534,10 +540,9 @@ export default function App() {
               <div style={{fontSize:10,color:"#2E4A68",marginTop:2}}>Current liquidity vs protocol caps — realtime snapshot</div>
             </div>
             <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
-              {[
-                {label:"Collateralized Amount",pct:collatPct,cur:pool.totalDeposits,cap:pool.collateralCap,c:pool.color},
-                {label:"Borrowed Amount",      pct:borrowPct, cur:pool.totalBorrow,  cap:pool.borrowCap,   c:"#F97316"},
-              ].map((b,i)=>{
+                {[
+                {label:"Collateralized Amount",pct:collatPct,curUSD:(pool.collateralUsed||0)*(pool.price||0),capUSD:(pool.collateralCap||0)*(pool.price||0),curAmt:pool.collateralUsed||0,capAmt:pool.collateralCap||0,c:pool.color},
+                {label:"Borrowed Amount",      pct:borrowPct,curUSD:(pool.totalBorrow||0)*(pool.price||0),  capUSD:(pool.borrowCap||0)*(pool.price||0),    curAmt:pool.totalBorrow||0,  capAmt:pool.borrowCap||0,  c:"#F97316"},              ].map((b,i)=>{
                 const warn=parseFloat(b.pct)>80;
                 return (
                   <div key={i} style={{flex:1,minWidth:200,background:"#060A14",border:`1px solid ${warn?"#F9731640":b.c+"22"}`,borderRadius:10,padding:"12px 14px"}}>
@@ -547,7 +552,7 @@ export default function App() {
                     </div>
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:10,fontFamily:"'DM Mono',monospace"}}>
                       <span style={{color:warn?"#F97316":b.c,fontWeight:600}}>{b.pct}%{warn?" ⚠":""}</span>
-                      <span style={{color:"#2E4A68"}}>{fmt(b.cur)} / {fmt(b.cap)} {pool.name.replace("ISO ","")}</span>
+                      <span style={{color:"#2E4A68"}}>${fmt(b.curUSD)} / ${fmt(b.capUSD)} · {fmt(b.curAmt)} {pool.name.replace("ISO ","")} </span>
                     </div>
                   </div>
                 );
