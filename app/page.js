@@ -539,10 +539,12 @@ export default function App() {
                 <div style={{fontSize:13,fontWeight:600,color:"#94A3B8"}}>Collateral Cap & Borrow Cap</div>
                 <div style={{fontSize:10,color:"#2E4A68",marginTop:2}}>Current liquidity vs protocol caps — realtime snapshot</div>
               </div>
-              <div style={{display:"flex",gap:5}}>
-                <button className={`unit-btn ${loanType==="general"?"on":""}`} onClick={()=>setLoanType("general")}>General</button>
-                <button className={`unit-btn ${loanType==="algoEfficiency"?"on":""}`} onClick={()=>setLoanType("algoEfficiency")}>Algo Efficiency</button>
-              </div>
+              {(selectedName==="ALGO"||selectedName==="xALGO") && (
+                <div style={{display:"flex",gap:5}}>
+                  <button className={`unit-btn ${loanType==="general"?"on":""}`} onClick={()=>setLoanType("general")}>General</button>
+                  <button className={`unit-btn ${loanType==="algoEfficiency"?"on":""}`} onClick={()=>setLoanType("algoEfficiency")}>Algo Efficiency</button>
+                </div>
+              )}
             </div>
             <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
               {[

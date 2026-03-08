@@ -24,7 +24,7 @@ export async function GET() {
     const indexer = new Indexer("", "https://mainnet-idx.algonode.cloud", 443);
 
     // Fetch pool info + both loan infos in parallel
-    const [poolResults, generalLoan, algoEffLoan] = await Promise.all([
+    const [poolResults, generalLoan, algoEffLoan, ecosystemLoan] = await Promise.all([
       Promise.all([...POOLS_TO_FETCH, ...ISOLATED].map(async (key) => {
         const pool = MainnetPools[key];
         if (!pool) return null;
@@ -45,6 +45,7 @@ export async function GET() {
       })),
       retrieveLoanInfo(indexer, MainnetLoans["GENERAL"]),
       retrieveLoanInfo(indexer, MainnetLoans["ALGO_EFFICIENCY"]),
+      retrieveLoanInfo(indexer, MainnetLoans["ALGORAND_ECOSYSTEM"]),
     ]);
 
     // Map caps from loan info by pool appId
@@ -52,21 +53,21 @@ export async function GET() {
       const dec = MainnetPools[p.key]?.assetDecimals ?? 6;
       const generalPool = generalLoan.pools[p.appId];
       const algoEffPool = algoEffLoan.pools[p.appId];
+      const ecosystemPool = ecosystemLoan.pools[p.appId];
       return {
         ...p,
         caps: {
-        general: {
-          collateralCap:  generalPool ? Number(generalPool.collateralCap) : 0,
-          collateralUsed: generalPool ? toAmount(generalPool.collateralUsed, dec) : 0,
+          general: {
+            collateralCap:  generalPool ? Number(generalPool.collateralCap) : (ecosystemPool ? Number(ecosystemPool.collateralCap) : 0),
+            collateralUsed: generalPool ? toAmount(generalPool.collateralUsed, dec) : (ecosystemPool ? toAmount(ecosystemPool.collateralUsed, dec) : 0),
+          },
+          algoEfficiency: {
+            collateralCap:  algoEffPool ? Number(algoEffPool.collateralCap) : 0,
+            collateralUsed: algoEffPool ? toAmount(algoEffPool.collateralUsed, dec) : 0,
+          },
         },
-        algoEfficiency: {
-          collateralCap:  algoEffPool ? Number(algoEffPool.collateralCap) : 0,
-          collateralUsed: algoEffPool ? toAmount(algoEffPool.collateralUsed, dec) : 0,
-        },
-      },
       };
     });
-
     return Response.json({ success: true, data: results });
   } catch (error) {
     return Response.json({ success: false, error: error.message }, { status: 500 });
