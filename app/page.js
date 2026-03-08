@@ -310,7 +310,8 @@ export default function App() {
   const [selectedName, setSelectedName] = useState("ALGO");
  const [liveData, setLiveData] = useState(null);
   const [livePrices, setLivePrices] = useState(null);
-  const [loanType, setLoanType] = useState("general");
+  const [loanType, setLoanType] = useState("general");const [easterEgg, setEasterEgg] = useState(false);
+  const [easterInput, setEasterInput] = useState("");
 
   useEffect(() => {
     fetch("/api/pools")
@@ -392,8 +393,7 @@ export default function App() {
         <div style={{maxWidth:1240,margin:"0 auto",padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:52}}>
           <div style={{display:"flex",alignItems:"center",gap:9}}>
             <div style={{width:26,height:26,background:"linear-gradient(135deg,#0AAFE6,#0055CC)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff"}}>FF</div>
-            <span style={{fontSize:13,fontWeight:600,letterSpacing:-.2}}>Folks Finance</span>
-            <span style={{color:"#162032",fontSize:11}}>/ Analytics</span>
+            <span style={{fontSize:13,fontWeight:600,letterSpacing:-.2,cursor:"pointer"}} onClick={()=>setEasterEgg(v=>!v)}>Folks Finance</span>            <span style={{color:"#162032",fontSize:11}}>/ Analytics</span>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:7,background:"#080E1C",border:"1px solid #0C1628",borderRadius:7,padding:"4px 11px",fontSize:10,color:"#2E4A68",fontFamily:"'DM Mono',monospace"}}>
             <span style={{width:5,height:5,background:"#10B981",borderRadius:"50%",animation:"dotpulse 2.5s ease infinite",display:"inline-block"}}/>
@@ -401,7 +401,26 @@ export default function App() {
           </div>
         </div>
       </header>
-
+      {easterEgg && (
+        <div style={{position:"fixed",top:0,left:0,width:"100vw",height:"100vh",background:"rgba(0,0,0,0.7)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>{setEasterEgg(false);setEasterInput("");}}>
+          <div style={{background:"#080E1C",border:"1px solid #0C1628",borderRadius:16,padding:"32px 40px",textAlign:"center",fontFamily:"'DM Sans',sans-serif"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:18,fontWeight:700,color:"#E2E8F0",marginBottom:20}}>Did somebody say... 🤔</div>
+            <input
+              autoFocus
+              value={easterInput}
+              onChange={e=>setEasterInput(e.target.value)}
+              placeholder="Type your answer..."
+              style={{background:"#060A14",border:"1px solid #162032",borderRadius:8,color:"#E2E8F0",padding:"10px 16px",fontSize:14,fontFamily:"'DM Mono',monospace",width:260,outline:"none",marginBottom:16}}
+            />
+            {easterInput.trim().toLowerCase() === "ravneeet" && (
+              <div style={{color:"#10B981",fontSize:13,marginTop:8,lineHeight:1.6,maxWidth:280}}>
+                🥙 Here is the secret recipe for this month's piadina:<br/>
+                <strong>wild boar salami, rocket, pecorino romano cheese and fig jam</strong>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <div style={{maxWidth:1240,margin:"0 auto",padding:"22px 20px 56px",display:"flex",gap:20}}>
 
         {/* SIDEBAR */}
