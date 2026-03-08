@@ -40,7 +40,7 @@ export async function GET() {
           totalBorrow: toAmount(
             info.variableBorrow.totalVariableBorrowAmount + info.stableBorrow.totalStableBorrowAmount, dec
           ),
-          borrowCap: toAmount(info.caps.borrowCap, dec),
+          borrowCap: Number(info.caps.borrowCap),
         };
       })),
       retrieveLoanInfo(indexer, MainnetLoans["GENERAL"]),

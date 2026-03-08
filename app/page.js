@@ -361,7 +361,7 @@ export default function App() {
     if (!live) return base;
     const caps = live.caps?.[loanType] || {};
     const livePrice = livePrices?.[selectedName] ?? base.price;
-    return { ...base, price: livePrice, depositAPY: live.depositAPY, varBorrowAPY: live.varBorrowAPY, stblBorrowAPY: live.stblBorrowAPY, totalDeposits: live.totalDeposits, totalBorrow: live.totalBorrow, collateralCap: caps.collateralCap || 0, collateralUsed: caps.collateralUsed || 0 };
+    return { ...base, price: livePrice, depositAPY: live.depositAPY, varBorrowAPY: live.varBorrowAPY, stblBorrowAPY: live.stblBorrowAPY, totalDeposits: live.totalDeposits, totalBorrow: live.totalBorrow, borrowCap: live.borrowCap || 0, collateralCap: caps.collateralCap || 0, collateralUsed: caps.collateralUsed || 0 };
   }, [selectedName, liveData, loanType, livePrices]);
   const isIsolated = ISOLATED_POOLS.some(p=>p.name===selectedName);
 
@@ -371,8 +371,8 @@ export default function App() {
   const apyTick = Math.max(0, Math.floor(apyHistory.length/6)-1);
   const amtTick = Math.max(0, Math.floor(amtHistory.length/6)-1);
 
-  const collatPct = (pool.collateralCap > 0 && pool.collateralUsed != null) ? ((pool.collateralUsed/pool.collateralCap)*100).toFixed(1) : "—";
-  const borrowPct  = (pool.borrowCap > 0 && pool.totalBorrow != null) ? ((pool.totalBorrow/pool.borrowCap)*100).toFixed(1) : "—";
+  const collatPct = (pool.collateralCap > 0 && pool.collateralUsed != null) ? (((pool.collateralUsed*pool.price)/pool.collateralCap)*100).toFixed(1) : "—";
+  const borrowPct  = (pool.borrowCap > 0 && pool.totalBorrow != null) ? (((pool.totalBorrow*pool.price)/pool.borrowCap)*100).toFixed(1) : "—";
 
   return (
     <div style={{background:"#060A14",color:"#E2E8F0",minHeight:"100vh",fontFamily:"'DM Sans',sans-serif",fontSize:14}}>
@@ -530,67 +530,39 @@ export default function App() {
                 <Area type="monotone" dataKey={amountUnit==="usd"?"depositUSD":"depositAmt"} name="Deposited" stroke={pool.color} fill="url(#gAmt)"  strokeWidth={2} dot={false} activeDot={{r:4,strokeWidth:0}}/>
                 <Area type="monotone" dataKey={amountUnit==="usd"?"borrowUSD":"borrowAmt"}   name="Borrowed"  stroke="#F97316"   fill="url(#gBAmt)" strokeWidth={2} dot={false} activeDot={{r:4,strokeWidth:0}}/>
               </AreaChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
           </Card>
 
-          {/* ── CAPS ── */}
           <Card>
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:13,fontWeight:600,color:"#94A3B8"}}>Collateral Cap & Borrow Cap</div>
-              <div style={{fontSize:10,color:"#2E4A68",marginTop:2}}>Current liquidity vs protocol caps — realtime snapshot</div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,flexWrap:"wrap",gap:10}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#94A3B8"}}>Collateral Cap & Borrow Cap</div>
+                <div style={{fontSize:10,color:"#2E4A68",marginTop:2}}>Current liquidity vs protocol caps — realtime snapshot</div>
+              </div>
+              <div style={{display:"flex",gap:5}}>
+                <button className={`unit-btn ${loanType==="general"?"on":""}`} onClick={()=>setLoanType("general")}>General</button>
+                <button className={`unit-btn ${loanType==="algoEfficiency"?"on":""}`} onClick={()=>setLoanType("algoEfficiency")}>Algo Efficiency</button>
+              </div>
             </div>
             <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
-                {[
-                {label:"Collateralized Amount",pct:collatPct,curUSD:(pool.collateralUsed||0)*(pool.price||0),capUSD:(pool.collateralCap||0)*(pool.price||0),curAmt:pool.collateralUsed||0,capAmt:pool.collateralCap||0,c:pool.color},
-                {label:"Borrowed Amount",      pct:borrowPct,curUSD:(pool.totalBorrow||0)*(pool.price||0),  capUSD:(pool.borrowCap||0)*(pool.price||0),    curAmt:pool.totalBorrow||0,  capAmt:pool.borrowCap||0,  c:"#F97316"},              ].map((b,i)=>{
+              {[
+                {label:"Collateralized Amount",pct:collatPct,curUSD:(pool.collateralUsed||0)*(pool.price||0),capUSD:(pool.collateralCap||0),c:pool.color},
+                {label:"Borrowed Amount",      pct:borrowPct,curUSD:(pool.totalBorrow||0)*(pool.price||0),  capUSD:(pool.borrowCap||0),    c:"#F97316"},
+              ].map((b,i)=>{
                 const warn=parseFloat(b.pct)>80;
                 return (
                   <div key={i} style={{flex:1,minWidth:200,background:"#060A14",border:`1px solid ${warn?"#F9731640":b.c+"22"}`,borderRadius:10,padding:"12px 14px"}}>
                     <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:.7,color:"#2E4A68",fontWeight:600,marginBottom:6}}>{b.label}</div>
                     <div style={{height:5,background:"#0A1628",borderRadius:3,overflow:"hidden",marginBottom:5}}>
-                      <div style={{height:"100%",width:`${Math.min(100,parseFloat(b.pct))}%`,background:warn?"#F97316":b.c,borderRadius:3}}/>
+                      <div style={{height:"100%",width:`${Math.min(100,parseFloat(b.pct)||0)}%`,background:warn?"#F97316":b.c,borderRadius:3}}/>
                     </div>
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:10,fontFamily:"'DM Mono',monospace"}}>
                       <span style={{color:warn?"#F97316":b.c,fontWeight:600}}>{b.pct}%{warn?" ⚠":""}</span>
-                      <span style={{color:"#2E4A68"}}>${fmt(b.curUSD)} / ${fmt(b.capUSD)} · {fmt(b.curAmt)} {pool.name.replace("ISO ","")} </span>
+                      <span style={{color:"#2E4A68"}}>${fmt(b.curUSD)} / ${fmt(b.capUSD)}</span>
                     </div>
                   </div>
                 );
               })}
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-              {[
-                {title:"Collateral Cap",c:pool.color,data:[{name:"Deposited",value:pool.totalDeposits*pool.price,amt:pool.totalDeposits},{name:"Cap",value:pool.collateralCap*pool.price,amt:pool.collateralCap}]},
-                {title:"Borrow Cap",    c:"#F97316",  data:[{name:"Borrowed", value:pool.totalBorrow*pool.price,  amt:pool.totalBorrow},  {name:"Cap",value:pool.borrowCap*pool.price,    amt:pool.borrowCap}]},
-              ].map((chart,ci)=>(
-                <div key={ci}>
-                  <div style={{fontSize:10,color:"#3A5270",fontWeight:600,marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{width:8,height:8,borderRadius:2,background:chart.c,display:"inline-block"}}/>{chart.title}
-                  </div>
-                  <ResponsiveContainer width="100%" height={160}>
-                    <BarChart data={chart.data} margin={{top:4,right:4,left:-16,bottom:0}} barCategoryGap="35%">
-                      <CartesianGrid strokeDasharray="2 5" stroke="#0A1628" vertical={false}/>
-                      <XAxis dataKey="name" tick={{fill:"#2E4A68",fontSize:10}} axisLine={false} tickLine={false}/>
-                      <YAxis tick={{fill:"#1E3050",fontSize:9}} tickFormatter={v=>`$${fmt(v)}`} axisLine={false} tickLine={false}/>
-                      <Tooltip content={({active,payload,label})=>{
-                        if(!active||!payload?.length) return null;
-                        const d=payload[0].payload;
-                        return (
-                          <div style={{background:"#0A1220",border:"1px solid #162032",borderRadius:8,padding:"9px 13px",fontSize:11,fontFamily:"'DM Mono',monospace"}}>
-                            <p style={{color:"#3A5270",marginBottom:4,fontSize:10}}>{label}</p>
-                            <p style={{color:chart.c}}>{fmtUSD(d.value)}</p>
-                            <p style={{color:"#4A6380",marginTop:2}}>{fmt(d.amt)} {pool.name.replace("ISO ","")}</p>
-                          </div>
-                        );
-                      }}/>
-                      <Bar dataKey="value" radius={[5,5,0,0]}>
-                        <Cell fill={`${chart.c}cc`}/>
-                        <Cell fill={`${chart.c}22`} stroke={chart.c} strokeWidth={1} strokeDasharray="4 2"/>
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ))}
             </div>
           </Card>
 
