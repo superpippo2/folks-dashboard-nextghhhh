@@ -16,7 +16,7 @@ function toAmount(bigint, decimals) {
   return Number(bigint) / Math.pow(10, decimals);
 }
 
-const POOLS_TO_FETCH = ["ALGO","xALGO","USDC","goBTC","goETH","WBTC","WETH","GOLD","SILVER"];
+const POOLS_TO_FETCH = ["ALGO","xALGO","tALGO","USDC","goBTC","goETH","WBTC","WETH","GOLD","SILVER"];
 const ISOLATED = ["ISOLATED_ALGO","ISOLATED_USDC","ISOLATED_TINY","ISOLATED_FOLKS"];
 
 export async function GET() {

@@ -1,9 +1,10 @@
 import { Indexer } from "algosdk";
-import { getOraclePrices, MainnetOracle, MainnetPools } from "@folks-finance/algorand-sdk";
+import { getOraclePrices, MainnetOracle } from "@folks-finance/algorand-sdk";
 
 const ASSETS = {
   ALGO:   { assetId: 0,          decimals: 6 },
   xALGO:  { assetId: 1134696561, decimals: 6 },
+  tALGO:  { assetId: 2537013734, decimals: 6 },
   USDC:   { assetId: 31566704,   decimals: 6 },
   goBTC:  { assetId: 386192725,  decimals: 8 },
   goETH:  { assetId: 386195940,  decimals: 8 },
