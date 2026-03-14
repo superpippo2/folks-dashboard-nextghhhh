@@ -15,6 +15,9 @@ const MAIN_POOLS = [
   { name:"WETH",   color:"#A0AEC0", icon:"Ξ",  logo:"/weth.png",                   depositAPY:0.55, varBorrowAPY:1.98, stblBorrowAPY:2.55, totalDeposits:610,      totalBorrow:280,      collateralCap:850,      borrowCap:500,      price:3415  },
   { name:"GOLD",   color:"#FFD166", icon:"Au", logo:`${CDN}/246516580/icon.png`,   depositAPY:0.18, varBorrowAPY:1.10, stblBorrowAPY:1.50, totalDeposits:12000,    totalBorrow:3800,     collateralCap:18000,    borrowCap:10000,    price:60.2  },
   { name:"SILVER", color:"#CBD5E0", icon:"Ag", logo:`${CDN}/246519683/icon.png`,   depositAPY:0.09, varBorrowAPY:0.88, stblBorrowAPY:1.20, totalDeposits:280000,   totalBorrow:72000,    collateralCap:350000,   borrowCap:180000,   price:0.82  },
+  { name:"WAVAX",  color:"#E84142", icon:"A",  logo:"/wavax.png",                  depositAPY:0.20, varBorrowAPY:1.50, stblBorrowAPY:2.00, totalDeposits:500,      totalBorrow:100,      collateralCap:800,      borrowCap:400,      price:25.0  },
+  { name:"WSOL",   color:"#9945FF", icon:"S",  logo:"/wsol.png",                   depositAPY:0.15, varBorrowAPY:1.20, stblBorrowAPY:1.80, totalDeposits:200,      totalBorrow:50,       collateralCap:300,      borrowCap:150,      price:150.0 },
+  { name:"WLINK",  color:"#2A5ADA", icon:"L",  logo:"/wlink.png",                  depositAPY:0.10, varBorrowAPY:1.00, stblBorrowAPY:1.50, totalDeposits:2000,     totalBorrow:400,      collateralCap:3000,     borrowCap:1500,     price:14.0  },
 ];
 const ISOLATED_POOLS = [
   { name:"ISO ALGO",  color:"#00B2FF", icon:"A", logo:`${CDN}/0/icon.png`,         depositAPY:2.40, varBorrowAPY:4.10, stblBorrowAPY:5.00, totalDeposits:3200000, totalBorrow:1400000, collateralCap:4000000, borrowCap:2000000, price:0.158 },
@@ -27,6 +30,7 @@ const ALL_POOLS = [...MAIN_POOLS, ...ISOLATED_POOLS];
 const KEY_MAP = {
   "ALGO":"ALGO","xALGO":"xALGO","tALGO":"tALGO","USDC":"USDC","goBTC":"goBTC",
   "goETH":"goETH","WBTC":"WBTC","WETH":"WETH","GOLD":"GOLD","SILVER":"SILVER",
+  "WAVAX":"WAVAX","WSOL":"WSOL","WLINK":"WLINK",
   "ISO ALGO":"ISOLATED_ALGO","ISO USDC":"ISOLATED_USDC",
   "ISO TINY":"ISOLATED_TINY","ISO FOLKS":"ISOLATED_FOLKS",
 };
@@ -349,8 +353,18 @@ export default function App() {
     if (!raw || raw.length === 0) return genHistory(pool, apyFrom, apyTo);
     const today = new Date().toISOString().slice(0, 10);
     const livePoint = { date: today, depositAPY: pool.depositAPY, varBorrowAPY: pool.varBorrowAPY, stblBorrowAPY: pool.stblBorrowAPY };
-    const withLive = [...raw.filter(d => d.date !== today), livePoint].filter(d => d.depositAPY != null);
-    if (withLive.length === 0) return genHistory(pool, apyFrom, apyTo);
+    const base = [...raw.filter(d => d.date !== today), livePoint].filter(d => d.depositAPY != null);
+    if (base.length === 0) return genHistory(pool, apyFrom, apyTo);
+    // forward-fill then back-fill null varBorrowAPY and stblBorrowAPY
+    let lastVar = null, lastStbl = null;
+    for (const d of base) { if (d.varBorrowAPY != null) lastVar = d.varBorrowAPY; else d.varBorrowAPY = lastVar; }
+    for (const d of base) { if (d.stblBorrowAPY != null) lastStbl = d.stblBorrowAPY; else d.stblBorrowAPY = lastStbl; }
+    lastVar = null; lastStbl = null;
+    for (let i = base.length - 1; i >= 0; i--) {
+      if (base[i].varBorrowAPY != null) lastVar = base[i].varBorrowAPY; else base[i].varBorrowAPY = lastVar ?? 0;
+      if (base[i].stblBorrowAPY != null) lastStbl = base[i].stblBorrowAPY; else base[i].stblBorrowAPY = lastStbl;
+    }
+    const withLive = base;
     // add anchor before range if needed
     const anchor = withLive.filter(d => new Date(d.date).getTime() < apyFrom).at(-1);
     const basePoints = anchor ? [anchor, ...withLive.filter(d => new Date(d.date).getTime() >= apyFrom)] : withLive;
@@ -366,7 +380,7 @@ export default function App() {
         interpolated.push({
           date: new Date(t0 + d * 86400000).toISOString().slice(0, 10),
           depositAPY:    a.depositAPY    + (b.depositAPY    - a.depositAPY)    * frac,
-          varBorrowAPY:  a.varBorrowAPY  != null && b.varBorrowAPY  != null ? a.varBorrowAPY  + (b.varBorrowAPY  - a.varBorrowAPY)  * frac : (a.varBorrowAPY  ?? b.varBorrowAPY  ?? 0),
+          varBorrowAPY:  a.varBorrowAPY  + (b.varBorrowAPY  - a.varBorrowAPY)  * frac,
           stblBorrowAPY: a.stblBorrowAPY != null && b.stblBorrowAPY != null ? a.stblBorrowAPY + (b.stblBorrowAPY - a.stblBorrowAPY) * frac : (a.stblBorrowAPY ?? b.stblBorrowAPY ?? null),
         });
       }
@@ -435,6 +449,7 @@ export default function App() {
   }, [selectedName, amtFrom, amtTo, historyData, pool]);
 
   const apyTick = Math.max(0, Math.floor(apyHistory.length/6)-1);
+  const hasStableData = apyHistory.some(d => d.stblBorrowAPY > 0);
   const amtTick = Math.max(0, Math.floor(amtHistory.length/6)-1);
 
   const collatPct = (pool.collateralCap > 0 && pool.collateralUsed != null) ? (((pool.collateralUsed*pool.price)/pool.collateralCap)*100).toFixed(1) : "—";
@@ -564,7 +579,7 @@ export default function App() {
                   <Tooltip content={<Tip isUSD={false} assetName={pool.name}/>}/>
                   {showDeposit  && <Area type="monotone" dataKey="depositAPY"    name="Deposit APY"        stroke="#10B981" fill="url(#gDep)"  strokeWidth={2}   dot={false} activeDot={{r:4,strokeWidth:0}}/>}
                   {showVariable && <Area type="monotone" dataKey="varBorrowAPY"  name="Variable Borrow APY" stroke="#F97316" fill="url(#gVar)"  strokeWidth={2}   dot={false} activeDot={{r:4,strokeWidth:0}}/>}
-                  {showStable   && <Area type="monotone" dataKey="stblBorrowAPY" name="Stable Borrow APY"  stroke="#F59E0B" fill="url(#gStbl)" strokeWidth={1.5} strokeDasharray="5 3" dot={false} activeDot={{r:4,strokeWidth:0}}/>}
+                  {showStable && hasStableData && <Area type="monotone" dataKey="stblBorrowAPY" name="Stable Borrow APY"  stroke="#F59E0B" fill="url(#gStbl)" strokeWidth={1.5} strokeDasharray="5 3" dot={false} activeDot={{r:4,strokeWidth:0}}/>}
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -577,7 +592,7 @@ export default function App() {
                 <div style={{fontSize:13,fontWeight:600,color:"#94A3B8"}}>Deposit & Borrow Amount</div>
                 <div style={{fontSize:10,color:"#2E4A68",marginTop:2}}>
                   Historical on-chain data · Algorand Mainnet
-                  {!historyData && <span style={{color:"#3A5270",marginLeft:6}}>Loading...</span>}
+                  {!historyData && <span style={{color:"#F97316",marginLeft:6}}>Loading...</span>}
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>

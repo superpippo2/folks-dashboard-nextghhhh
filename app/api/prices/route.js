@@ -12,6 +12,9 @@ const ASSETS = {
   WETH:   { assetId: 887406851,  decimals: 8 },
   GOLD:   { assetId: 246516580,  decimals: 6 },
   SILVER: { assetId: 246519683,  decimals: 6 },
+  WAVAX:  { assetId: 893309613,  decimals: 8 },
+  WSOL:   { assetId: 887648583,  decimals: 8 },
+  WLINK:  { assetId: 1200094857, decimals: 8 },
   TINY:   { assetId: 2200000000, decimals: 6 },
   FOLKS:  { assetId: 3203964481, decimals: 6 },
 };
